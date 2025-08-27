@@ -1,13 +1,13 @@
-package com.example.productivityapp.ui.dashboard
+package com.example.productivityapp.ui.timeline
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
-class DashboardViewModel : ViewModel() {
+class TimelineViewModel : ViewModel() {
 
     private val _text = MutableLiveData<String>().apply {
-        value = "This is dashboard Fragment"
+        value = "This is timeline Fragment"
     }
     val text: LiveData<String> = _text
 }

@@ -1,4 +1,4 @@
-package com.example.productivityapp.ui.home
+package com.example.productivityapp.ui.dataentry
 
 import android.app.Application
 import android.os.Environment
@@ -15,7 +15,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.regex.Pattern
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+class DataEntryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _text = MutableLiveData<String>().apply {
         value = "Enter your study session details below."
