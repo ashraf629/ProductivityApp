@@ -1,0 +1,1 @@
+An Android app which allows the user to record study sessions.

@@ -7,11 +7,11 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import com.example.productivityapp.databinding.FragmentHomeBinding
+import com.example.productivityapp.databinding.FragmentDataentryBinding
 
 class DataEntryFragment : Fragment() {
 
-    private var _binding: FragmentHomeBinding? = null
+    private var _binding: FragmentDataentryBinding? = null
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
@@ -25,7 +25,7 @@ class DataEntryFragment : Fragment() {
         dataEntryViewModel =
             ViewModelProvider(this).get(DataEntryViewModel::class.java)
 
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        _binding = FragmentDataentryBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         // Observe the text LiveData from the ViewModel
