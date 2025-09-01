@@ -9,8 +9,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.productivityapp.databinding.FragmentTimelineBinding // Ensure this is correct
+import com.example.productivityapp.data.TimelineEntry
 
-class TimelineFragment : Fragment() {
+class TimelineFragment : Fragment(), TimelineAdapter.OnItemDeleteListener {
 
     private var _binding: FragmentTimelineBinding? = null
     // This property is only valid between onCreateView and onDestroyView.
@@ -47,7 +48,7 @@ class TimelineFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        timelineAdapter = TimelineAdapter() // Initialize the adapter
+        timelineAdapter = TimelineAdapter(this) // Initialize the adapter
         binding.recyclerViewTimeline.apply {
             adapter = timelineAdapter
             layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -61,10 +62,10 @@ class TimelineFragment : Fragment() {
         timelineViewModel.timelineEntries.observe(viewLifecycleOwner) { entries ->
             Log.d("TimelineFragment", "Observed ${entries.size} entries from ViewModel")
             // Submit the list of entries to the adapter
-            timelineAdapter.submitList(entries) {
+            timelineAdapter.submitList(entries.toList()) {
                 // This optional callback runs after the list diffing and updates are complete.
                 // It's a good place to scroll after the list has been updated.
-                if (entries.isNotEmpty()) {
+                if (entries.isNotEmpty() && binding.recyclerViewTimeline.layoutManager?.isSmoothScrolling == false) {
                     // Post the scroll to the RecyclerView's message queue to ensure it happens
                     // after the layout pass.
                     binding.recyclerViewTimeline.post {
@@ -100,5 +101,12 @@ class TimelineFragment : Fragment() {
         super.onDestroyView()
         _binding = null // Important to prevent memory leaks
         Log.d("TimelineFragment", "onDestroyView called, binding set to null")
+    }
+
+    override fun onDeleteClick(entry: TimelineEntry) {
+        Log.d("TimelineFragment", "Delete clicked for entry ID: ${entry.id}, Topic: ${entry.topic}")
+        // Show a confirmation dialog before deleting (Recommended)
+        // For simplicity, directly calling delete here. Add AlertDialog for better UX.
+        timelineViewModel.deleteTimelineEntry(entry)
     }
 }

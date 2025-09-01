@@ -42,7 +42,7 @@
         tools:text="120 minutes" />
 
     <ImageButton
-        android:id="@+id/button_delete_item"
+        android:id="@+id/buttonDeleteItem"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"

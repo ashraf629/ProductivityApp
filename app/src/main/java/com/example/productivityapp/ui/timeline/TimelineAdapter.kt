@@ -8,18 +8,36 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.productivityapp.data.TimelineEntry // Import your data class
 import com.example.productivityapp.databinding.ItemTimelineEntryBinding // Import the ViewBinding class
 
-class TimelineAdapter : ListAdapter<TimelineEntry, TimelineAdapter.TimelineViewHolder>(TimelineDiffCallback()) {
+class TimelineAdapter(
+    private val deleteListener: OnItemDeleteListener
+) : ListAdapter<TimelineEntry, TimelineAdapter.TimelineViewHolder>(TimelineDiffCallback()) {
 
+    interface OnItemDeleteListener {
+        fun onDeleteClick(entry: TimelineEntry)
+    }
     // ViewHolder class: Holds references to the views for a single list item
     class TimelineViewHolder(
-        private val binding: ItemTimelineEntryBinding
+        private val binding: ItemTimelineEntryBinding,
+        private val listener: OnItemDeleteListener
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        // Updated bind method to set actual data
+        private var currentTimelineEntry: TimelineEntry? = null
+
+        init {
+            binding.buttonDeleteItem.setOnClickListener {
+                currentTimelineEntry?.let { entry ->
+                    listener.onDeleteClick(entry)
+                }
+            }
+        }
         fun bind(entry: TimelineEntry) {
+            currentTimelineEntry = entry // Store the current entry for the click listener
             binding.textViewItemDate.text = entry.date
             binding.textViewItemTopic.text = entry.topic
+            // Format the duration Int to a String for display
             binding.textViewItemDuration.text = "${entry.duration} minutes"
+
+            // Note: Delete button click listener is set in init block
         }
     }
 
@@ -29,7 +47,7 @@ class TimelineAdapter : ListAdapter<TimelineEntry, TimelineAdapter.TimelineViewH
             parent,
             false
         )
-        return TimelineViewHolder(binding)
+        return TimelineViewHolder(binding, deleteListener)
     }
 
     override fun onBindViewHolder(holder: TimelineViewHolder, position: Int) {
@@ -41,10 +59,7 @@ class TimelineAdapter : ListAdapter<TimelineEntry, TimelineAdapter.TimelineViewH
 
     class TimelineDiffCallback : DiffUtil.ItemCallback<TimelineEntry>() {
         override fun areItemsTheSame(oldItem: TimelineEntry, newItem: TimelineEntry): Boolean {
-            // For now, using referential equality. If you add unique IDs, compare them.
-            // A more robust way if date+topic is unique enough for your data:
-            // return oldItem.date == newItem.date && oldItem.topic == newItem.topic
-            return oldItem === newItem // Keeping it simple as before for now
+            return oldItem.id === newItem.id
         }
 
         override fun areContentsTheSame(oldItem: TimelineEntry, newItem: TimelineEntry): Boolean {

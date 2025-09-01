@@ -73,4 +73,25 @@ class TimelineViewModel(application: Application) : AndroidViewModel(application
 
     // You can add other methods here if needed, e.g., for filtering, specific queries via repository, etc.
 
+    /**
+     * Deletes a specific timeline entry from the database.
+     * This will be called from the Fragment when the delete action is triggered.
+     *
+     * @param entry The TimelineEntry to delete.
+     */
+    fun deleteTimelineEntry(entry: TimelineEntry) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Attempting to delete entry with ID: ${entry.id}")
+                repository.delete(entry)
+                Log.i(TAG, "Successfully requested deletion for entry ID: ${entry.id}")
+                // Optionally, post a success message (e.g., for a Toast or SnackBar)
+                // _userMessage.value = Event("Entry deleted") // Requires Event wrapper for one-time messages
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting entry ID: ${entry.id}", e)
+                _errorMessage.value = "Error deleting entry: ${e.message}"
+            }
+        }
+    }
+
 }
