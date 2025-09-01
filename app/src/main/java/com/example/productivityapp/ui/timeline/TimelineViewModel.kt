@@ -1,30 +1,22 @@
 package com.example.productivityapp.ui.timeline
 
+import android.app.Application
+import android.util.Log // Keep for logging if needed
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-// import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData // For converting Flow to LiveData
+import androidx.lifecycle.viewModelScope // For potential manual refreshes or actions
+import com.example.productivityapp.data.AppDatabase
+import com.example.productivityapp.data.TimelineEntry
+import com.example.productivityapp.data.TimelineRepository
+import kotlinx.coroutines.launch // For manual actions if any
 
-import android.app.Application
-import android.os.Environment
-import android.util.Log // For logging
-import androidx.lifecycle.AndroidViewModel
-import com.example.productivityapp.data.TimelineEntry // Ensure this import is correct
-import com.example.productivityapp.utils.CsvParser // Ensure this import is correct
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.io.File
 class TimelineViewModel(application: Application) : AndroidViewModel(application) {
 
-//    private val _text = MutableLiveData<String>().apply {
-//        value = "This is timeline Fragment"
-//    }
-//    val text: LiveData<String> = _text
+    private val repository: TimelineRepository
+    val timelineEntries: LiveData<List<TimelineEntry>> // This will be directly from the repository
 
-    private val _timelineEntries = MutableLiveData<List<TimelineEntry>>()
-    val timelineEntries: LiveData<List<TimelineEntry>> = _timelineEntries
-
-    // Optional: LiveData for loading state and error messages (we'll use these more in later steps)
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
@@ -32,63 +24,53 @@ class TimelineViewModel(application: Application) : AndroidViewModel(application
     val errorMessage: LiveData<String?> = _errorMessage
 
     companion object {
-        private const val TAG = "TimelineViewModel" // For Logcat
-        private const val CSV_FILE_NAME = "study_sessions.csv" // Consistent with DataEntryViewModel
+        private const val TAG = "TimelineViewModel"
     }
 
-    fun loadTimelineData() {
-        Log.d(TAG, "loadTimelineData called")
-        _isLoading.value = true
-        _errorMessage.value = null // Clear previous error
+    init {
+        Log.d(TAG, "Initializing TimelineViewModel")
+        val timelineEntryDao = AppDatabase.getDatabase(application).timelineEntryDao()
+        repository = TimelineRepository(timelineEntryDao)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val context = getApplication<Application>().applicationContext
-                val documentsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-                val targetDir = documentsDir ?: context.filesDir
-                val csvFileToRead = File(targetDir, CSV_FILE_NAME)
+        // Observe the Flow from the repository and convert it to LiveData
+        // This LiveData will automatically update whenever the data in the Room database changes.
+        timelineEntries = repository.allEntries.asLiveData() // Magic!
+        Log.d(TAG, "timelineEntries LiveData initialized from repository Flow")
 
-                Log.d(TAG, "Attempting to read from: ${csvFileToRead.absolutePath}")
-
-                if (csvFileToRead.exists()) {
-                    Log.d(TAG, "File exists. Parsing...")
-                    val entries = CsvParser.parseCsvFromFile(csvFileToRead)
-                    _timelineEntries.postValue(entries) // Post to LiveData
-
-                    // --- Logging the loaded data ---
-                    if (entries.isNotEmpty()) {
-                        Log.i(TAG, "Successfully parsed ${entries.size} entries:")
-                        entries.forEachIndexed { index, entry ->
-                            Log.d(TAG, "Entry ${index + 1}: Date=${entry.date}, Topic=${entry.topic}, Duration=${entry.duration}")
-                        }
-                    } else {
-                        Log.i(TAG, "CSV file parsed, but no entries found (file might be empty or only contain header).")
-                        _errorMessage.postValue("No study sessions found in the file.")
-                    }
-                    // --- End of logging ---
-
+        // Example: You might want to observe the flow here if you need to react to its loading states
+        // or initial data for _isLoading or _errorMessage, though often the Fragment can handle this
+        // based on the list content.
+        viewModelScope.launch {
+            repository.allEntries.collect { entries ->
+                if (entries.isEmpty()) {
+                    // This is just an example. `timelineEntries` will also reflect this.
+                    // You might set a specific message if the initial load is empty.
+                    // However, relying on the Fragment to check timelineEntries.observe is often cleaner.
+                    Log.d(TAG, "Collected empty list from repository.allEntries initially or after update.")
+                    // _errorMessage.postValue("No entries found.") // Be careful not to overwrite other errors
                 } else {
-                    Log.w(TAG, "CSV file does not exist at ${csvFileToRead.absolutePath}")
-                    _timelineEntries.postValue(emptyList()) // Post empty list
-                    _errorMessage.postValue("Data file not found. Add some entries first.")
+                    Log.d(TAG, "Collected ${entries.size} entries from repository.allEntries.")
                 }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading timeline data", e)
-                _errorMessage.postValue("Error loading data: ${e.message}")
-                _timelineEntries.postValue(emptyList()) // Post empty list on error
-            } finally {
-                _isLoading.postValue(false)
-                Log.d(TAG, "loadTimelineData finished")
+                // Typically, you don't need to explicitly set _isLoading here based on Flow collection
+                // unless you have very specific loading state needs not covered by UI checks for empty list.
             }
         }
     }
 
-    // Dummy function to trigger loading for testing (e.g., from Fragment's onViewCreated)
-    // In a real scenario, this might be called automatically or based on user action.
+    /**
+     * This function can be used to trigger a manual refresh or other actions.
+     * With Room's Flow to LiveData, data refreshes automatically.
+     * So, this function's role might change (e.g., just for logging or explicit loading state control).
+     */
     fun onFragmentReady() {
-        Log.d(TAG, "onFragmentReady called, initiating data load.")
-        loadTimelineData()
+        Log.d(TAG, "onFragmentReady called. Data should be loading/flowing automatically.")
+        // You could set _isLoading true here if you want to show a spinner
+        // until the first emission from the Flow populates the list.
+        // However, the Fragment observing timelineEntries will get the data when it's ready.
+        // _isLoading.value = true // If you want to manually manage a global loading spinner
+        // No need to call a separate loadTimelineData() if timelineEntries is already observing the Flow.
     }
-}
 
+    // You can add other methods here if needed, e.g., for filtering, specific queries via repository, etc.
+
+}

@@ -1,21 +1,20 @@
 package com.example.productivityapp.ui.dataentry
 
 import android.app.Application
-import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.productivityapp.data.AppDatabase // Import your AppDatabase
+import com.example.productivityapp.data.TimelineEntry // Import your Entity
+import com.example.productivityapp.data.TimelineRepository // Import your Repository
 import com.example.productivityapp.utils.Event
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.util.regex.Pattern
 
 class DataEntryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository: TimelineRepository
 
     private val _text = MutableLiveData<String>().apply {
         value = "Enter your study session details below."
@@ -29,53 +28,46 @@ class DataEntryViewModel(application: Application) : AndroidViewModel(applicatio
     val clearFieldsEvent: LiveData<Event<Unit>> = _clearFieldsEvent
 
     companion object {
-        private const val CSV_FILE_NAME = "study_sessions.csv"
-        private const val CSV_HEADER = "Date,Topic,Duration\n"
         // Regex for YYYY-MM-DD format
         private val DATE_PATTERN = Pattern.compile(
             "^\\d{4}-\\d{2}-\\d{2}$"
         )
     }
 
-    fun saveStudySession(date: String, topic: String, duration: String) {
-        if (date.isBlank() || topic.isBlank() || duration.isBlank()) {
+    init {
+        // Initialize the repository
+        val timelineEntryDao = AppDatabase.getDatabase(application).timelineEntryDao()
+        repository = TimelineRepository(timelineEntryDao)
+    }
+
+    fun saveStudySession(dateStr: String, topicStr: String, durationStr: String) {
+        if (dateStr.isBlank() || topicStr.isBlank() || durationStr.isBlank()) {
             _toastMessage.value = Event("Please fill all fields")
             return
         }
 
-        if (!DATE_PATTERN.matcher(date).matches()) {
+        if (!DATE_PATTERN.matcher(dateStr).matches()) {
             _toastMessage.value = Event("Invalid date format. Please use YYYY-MM-DD")
             return
         }
 
+        val durationInt = durationStr.toIntOrNull()
+        if (durationInt == null || durationInt <= 0) { // Also check if duration is positive
+            _toastMessage.value = Event("Duration must be a valid positive number (minutes)")
+            return
+        }
+
         viewModelScope.launch {
-            val entry = "$date,$topic,$duration\n"
             try {
-                val context = getApplication<Application>().applicationContext
-                val documentsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-                val targetDir = documentsDir ?: context.filesDir
-
-                if (!targetDir.exists()) {
-                    targetDir.mkdirs()
-                }
-
-                val file = File(targetDir, CSV_FILE_NAME)
-                val fileExists = file.exists()
-
-                withContext(Dispatchers.IO) {
-                    FileOutputStream(file, true).use { fos ->
-                        if (!fileExists || file.length() == 0L) {
-                            fos.write(CSV_HEADER.toByteArray())
-                        }
-                        fos.write(entry.toByteArray())
-                    }
-                }
-                _toastMessage.value = Event("Data saved to ${file.absolutePath}")
-                _clearFieldsEvent.value = Event(Unit)
-
-            } catch (e: IOException) {
-                e.printStackTrace()
+                // Create TimelineEntry with Int duration
+                val newEntry = TimelineEntry(date = dateStr, topic = topicStr, duration = durationInt)
+                repository.insert(newEntry) // Call repository's insert method
+                _toastMessage.value = Event("Data saved successfully!")
+                _clearFieldsEvent.value = Event(Unit) // Trigger clearing fields in UI
+            } catch (e: Exception) {
+                // More specific error handling can be added if needed
                 _toastMessage.value = Event("Error saving data: ${e.message}")
+                e.printStackTrace() // Log the full error for debugging
             }
         }
     }
@@ -83,28 +75,13 @@ class DataEntryViewModel(application: Application) : AndroidViewModel(applicatio
     fun deleteAllStudySessions() {
         viewModelScope.launch {
             try {
-                val context = getApplication<Application>().applicationContext
-                val documentsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-                val targetDir = documentsDir ?: context.filesDir
-
-                if (!targetDir.exists()) {
-                    targetDir.mkdirs()
-                }
-
-                val file = File(targetDir, CSV_FILE_NAME)
-
-                withContext(Dispatchers.IO) {
-                    // Open in write mode (false for append) to overwrite the file
-                    FileOutputStream(file, false).use { fos ->
-                        fos.write(CSV_HEADER.toByteArray())
-                    }
-                }
-                _toastMessage.value = Event("All data deleted. File reset to header.")
-
-            } catch (e: IOException) {
-                e.printStackTrace()
+                repository.deleteAll() // Call repository's deleteAll method
+                _toastMessage.value = Event("All data deleted successfully!")
+            } catch (e: Exception) {
                 _toastMessage.value = Event("Error deleting data: ${e.message}")
+                e.printStackTrace() // Log the full error
             }
         }
     }
 }
+

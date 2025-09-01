@@ -19,7 +19,7 @@ class TimelineAdapter : ListAdapter<TimelineEntry, TimelineAdapter.TimelineViewH
         fun bind(entry: TimelineEntry) {
             binding.textViewItemDate.text = entry.date
             binding.textViewItemTopic.text = entry.topic
-            binding.textViewItemDuration.text = entry.duration
+            binding.textViewItemDuration.text = "${entry.duration} minutes"
         }
     }
 
