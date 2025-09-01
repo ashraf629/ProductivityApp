@@ -1,4 +1,4 @@
-package com.example.productivityapp.ui.timeline // Or your chosen package
+package com.example.productivityapp.ui.timeline
 
 import android.os.Bundle
 import android.util.Log
@@ -8,7 +8,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.productivityapp.databinding.FragmentTimelineBinding // Ensure this is correct
+import com.example.productivityapp.databinding.FragmentTimelineBinding
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 class TimelineFragment : Fragment() {
 
@@ -28,16 +31,36 @@ class TimelineFragment : Fragment() {
         timelineViewModel = ViewModelProvider(this)[TimelineViewModel::class.java]
 
         _binding = FragmentTimelineBinding.inflate(inflater, container, false)
-        val root: View = binding.root
 
         setupRecyclerView() // Call new function to setup RecyclerView
 
-        return root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         Log.d("TimelineFragment", "onViewCreated called")
+
+        // Apply insets to the RecyclerView
+        ViewCompat.setOnApplyWindowInsetsListener(binding.recyclerViewTimeline) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()) // For keyboard
+
+            // RecyclerView needs padding at the top for status bar,
+            // and bottom for navigation bar/IME.
+            v.updatePadding(
+                // left = systemBars.left, // Usually not needed for vertical lists
+                top = systemBars.top,
+                // right = systemBars.right,
+                // Choose the larger of systemBars.bottom or ime.bottom
+                // This handles the case where the keyboard might appear over the nav bar
+                bottom = maxOf(systemBars.bottom, ime.bottom)
+            )
+            // Do NOT consume all insets if other views in the hierarchy might need them,
+            // but for a RecyclerView that's the main scrolling content, this is often fine.
+            // However, to be safer and allow BottomNavigationView to also get insets if needed:
+            insets // Return the insets to allow propagation
+        }
 
         observeViewModel() // Call new function to observe ViewModel LiveData
 
@@ -51,8 +74,9 @@ class TimelineFragment : Fragment() {
         binding.recyclerViewTimeline.apply {
             adapter = timelineAdapter
             layoutManager = LinearLayoutManager(requireContext()).apply {
-                stackFromEnd = true // <-- ADD THIS LINE
+                stackFromEnd = true
             }
+            clipToPadding = false
         }
         Log.d("TimelineFragment", "RecyclerView setup complete")
     }
@@ -64,6 +88,7 @@ class TimelineFragment : Fragment() {
             timelineAdapter.submitList(entries) {
                 // This optional callback runs after the list diffing and updates are complete.
                 // It's a good place to scroll after the list has been updated.
+                Log.d("TimelineFragment", "submitList callback: entries.size = ${entries.size}")
                 if (entries.isNotEmpty()) {
                     // Post the scroll to the RecyclerView's message queue to ensure it happens
                     // after the layout pass.

@@ -5,9 +5,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.ViewCompat         // <-- Import
+import androidx.core.view.WindowInsetsCompat // <-- Import
+import androidx.core.view.updatePadding      // <-- Import
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.productivityapp.databinding.FragmentDataentryBinding
+import kotlin.math.max // <-- Import for maxOf if not already implicitly available
 
 class DataEntryFragment : Fragment() {
 
@@ -26,7 +30,39 @@ class DataEntryFragment : Fragment() {
             ViewModelProvider(this).get(DataEntryViewModel::class.java)
 
         _binding = FragmentDataentryBinding.inflate(inflater, container, false)
-        val root: View = binding.root
+        // We'll return binding.root here, and apply insets in onViewCreated
+        return binding.root
+    }
+
+    // Add onViewCreated if it doesn't exist, or modify it if it does
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Apply insets to the root view of DataEntryFragment
+        // This is binding.root because FragmentDataentryBinding's root is the ConstraintLayout
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()) // For keyboard insets
+
+            // Apply padding to the root layout to avoid system bars and keyboard
+            v.updatePadding(
+                left = systemBars.left,
+                top = systemBars.top,
+                right = systemBars.right,
+                // Use the larger of system bar bottom or IME bottom for padding.
+                // This ensures content shifts correctly when the keyboard appears.
+                bottom = max(systemBars.bottom, ime.bottom)
+            )
+
+            // Return the insets to allow them to be propagated to child views if necessary,
+            // though for a root view handling like this, often CONSUMED is also an option
+            // if you are sure no children need to react to these specific insets further.
+            // For general safety and to match BottomNavigationView behavior, returning insets is good.
+            insets
+        }
+
+        // --- Your existing logic from onCreateView that manipulates views should ideally be here ---
+        // --- or called from here if it depends on the views being fully created and laid out. ---
 
         // Observe the text LiveData from the ViewModel
         dataEntryViewModel.text.observe(viewLifecycleOwner) {
@@ -58,11 +94,9 @@ class DataEntryFragment : Fragment() {
         }
 
         // Set OnClickListener for the delete all button
-        binding.buttonDeleteAll.setOnClickListener { // Corrected ID here
+        binding.buttonDeleteAll.setOnClickListener {
             dataEntryViewModel.deleteAllStudySessions()
         }
-
-        return root
     }
 
     override fun onDestroyView() {
