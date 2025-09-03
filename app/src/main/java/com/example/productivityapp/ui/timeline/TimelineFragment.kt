@@ -20,6 +20,8 @@ class TimelineFragment : Fragment(), TimelineAdapter.OnItemDeleteListener {
     private lateinit var timelineViewModel: TimelineViewModel
     private lateinit var timelineAdapter: TimelineAdapter // Declare adapter
 
+    private var hasScrolledToTopInitially = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -39,7 +41,7 @@ class TimelineFragment : Fragment(), TimelineAdapter.OnItemDeleteListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         Log.d("TimelineFragment", "onViewCreated called")
-
+        hasScrolledToTopInitially = false // Reset the flag
         observeViewModel() // Call new function to observe ViewModel LiveData
 
         // Trigger data loading from ViewModel (using the method we added for testing)
@@ -61,17 +63,16 @@ class TimelineFragment : Fragment(), TimelineAdapter.OnItemDeleteListener {
     private fun observeViewModel() {
         timelineViewModel.timelineEntries.observe(viewLifecycleOwner) { entries ->
             Log.d("TimelineFragment", "Observed ${entries.size} entries from ViewModel")
+            val listChanged = timelineAdapter.currentList != entries
             // Submit the list of entries to the adapter
             timelineAdapter.submitList(entries.toList()) {
-                // This optional callback runs after the list diffing and updates are complete.
-                // It's a good place to scroll after the list has been updated.
-                if (entries.isNotEmpty() && binding.recyclerViewTimeline.layoutManager?.isSmoothScrolling == false) {
-                    // Post the scroll to the RecyclerView's message queue to ensure it happens
-                    // after the layout pass.
-                    binding.recyclerViewTimeline.post {
-                        binding.recyclerViewTimeline.smoothScrollToPosition(entries.size - 1)
-                        Log.d("TimelineFragment", "Scrolled to position ${entries.size - 1}")
+                // This callback runs after the list diffing and updates are complete.
+                if (!hasScrolledToTopInitially && entries.isNotEmpty()) {
+                    binding.recyclerViewTimeline.post { // Ensure layout pass is complete
+                        binding.recyclerViewTimeline.scrollToPosition(0) // Scroll to top
+                        Log.d("TimelineFragment", "Scrolled to top (position 0) on initial data.")
                     }
+                    hasScrolledToTopInitially = true
                 }
             }
             if (entries.isNotEmpty()) {
