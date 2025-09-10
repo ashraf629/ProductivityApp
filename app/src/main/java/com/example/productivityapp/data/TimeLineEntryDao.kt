@@ -66,5 +66,13 @@ interface TimelineEntryDao {
     @Query("SELECT DISTINCT topic FROM study_sessions ORDER BY topic ASC")
     fun getAllDistinctTopics(): LiveData<List<String>>
 
+    @Query("""
+        SELECT topic AS topicName, SUM(duration) AS totalMinutes
+        FROM study_sessions
+        GROUP BY topic
+        ORDER BY totalMinutes DESC
+    """)
+    fun getTopicAnalytics(): LiveData<List<TopicAnalyticsItem>>
+
 }
 

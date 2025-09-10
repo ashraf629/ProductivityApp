@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.productivityapp.databinding.FragmentAnalyticsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope // Scope for file writing, consider viewModelScope or lifecycleScope
@@ -26,6 +27,7 @@ class AnalyticsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var analyticsViewModel: AnalyticsViewModel
+    private lateinit var topicAnalyticsAdapter: TopicAnalyticsAdapter // Declare the adapter
 
     // Activity Result Launcher for file permissions (if needed for older Android versions)
     private val requestPermissionLauncher =
@@ -76,6 +78,8 @@ class AnalyticsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupRecyclerView()
+
         binding.buttonExportToCsv.setOnClickListener {
             Log.d("AnalyticsFragment", "Export button clicked")
             // For Android 10+ using SAF, direct permission check might not be needed for ACTION_CREATE_DOCUMENT
@@ -85,6 +89,14 @@ class AnalyticsFragment : Fragment() {
         }
 
         observeViewModel()
+    }
+
+    private fun setupRecyclerView() {
+        topicAnalyticsAdapter = TopicAnalyticsAdapter() // Initialize the adapter
+        binding.recyclerViewTopicAnalytics.apply {
+            adapter = topicAnalyticsAdapter
+            layoutManager = LinearLayoutManager(requireContext()) // Set layout manager
+        }
     }
 
     private fun observeViewModel() {
@@ -111,6 +123,15 @@ class AnalyticsFragment : Fragment() {
                 val fileName = "ProductivityData_$timeStamp.csv"
                 createDocumentLauncher.launch(fileName) // Launch SAF to let user pick location and name
             }
+        }
+
+        analyticsViewModel.topicAnalyticsWithFormattedHours.observe(viewLifecycleOwner) { analyticsList ->
+            if (analyticsList.isNullOrEmpty()) {
+                Log.d("AnalyticsFragment", "Topic analytics list is null or empty.")
+            } else {
+                Log.d("AnalyticsFragment", "Updating topic analytics list with ${analyticsList.size} items.")
+            }
+            topicAnalyticsAdapter.submitList(analyticsList)
         }
     }
 
@@ -142,6 +163,7 @@ class AnalyticsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        binding.recyclerViewTopicAnalytics.adapter = null // Avoid memory leaks
         _binding = null
     }
 }

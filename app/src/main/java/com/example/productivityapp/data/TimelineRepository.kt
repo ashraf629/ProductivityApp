@@ -66,6 +66,8 @@ class TimelineRepository(private val timelineEntryDao: TimelineEntryDao) {
     }
 
     val distinctTopics: LiveData<List<String>> = timelineEntryDao.getAllDistinctTopics()
+
+    val topicAnalytics: LiveData<List<TopicAnalyticsItem>> = timelineEntryDao.getTopicAnalytics()
 }
 
 

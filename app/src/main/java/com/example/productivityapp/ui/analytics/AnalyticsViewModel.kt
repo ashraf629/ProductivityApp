@@ -6,9 +6,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.map
 import com.example.productivityapp.data.AppDatabase
 import com.example.productivityapp.data.TimelineEntry
 import com.example.productivityapp.data.TimelineRepository
+import com.example.productivityapp.data.TopicAnalyticsItem
 import com.example.productivityapp.utils.Event
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -29,6 +31,10 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isLoading = MutableLiveData<Boolean>(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
+    val topicAnalyticsList: LiveData<List<TopicAnalyticsItem>>
+    val topicAnalyticsWithFormattedHours: LiveData<List<TopicAnalyticsDisplayItem>>
+
+
     companion object {
         private const val TAG = "AnalyticsViewModel"
     }
@@ -37,6 +43,29 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
         val timelineEntryDao = AppDatabase.getDatabase(application).timelineEntryDao()
         repository = TimelineRepository(timelineEntryDao)
         Log.d(TAG, "AnalyticsViewModel initialized with repository.")
+
+        topicAnalyticsList = repository.topicAnalytics
+        topicAnalyticsWithFormattedHours = topicAnalyticsList.map { list ->
+            list.map { item ->
+                TopicAnalyticsDisplayItem(
+                    topicName = item.topicName,
+                    totalMinutes = item.totalMinutes,
+                    formattedTime = formatMinutesToHoursMinutes(item.totalMinutes)
+                )
+            }
+        }
+    }
+
+    fun formatMinutesToHoursMinutes(totalMinutes: Int): String {
+        if (totalMinutes < 0) return "N/A"
+        if (totalMinutes == 0) return "0m"
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return when {
+            hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+            hours > 0 -> "${hours}h"
+            else -> "${minutes}m"
+        }
     }
 
     fun exportTimelineDataToCsv() {
@@ -97,3 +126,9 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 }
+
+data class TopicAnalyticsDisplayItem(
+    val topicName: String,
+    val totalMinutes: Int,
+    val formattedTime: String
+)
