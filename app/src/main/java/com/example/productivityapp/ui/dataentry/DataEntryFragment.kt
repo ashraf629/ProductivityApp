@@ -4,11 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.productivityapp.databinding.FragmentDataentryBinding
-// Added imports for date formatting
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -19,6 +19,7 @@ class DataEntryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var dataEntryViewModel: DataEntryViewModel
+    private lateinit var topicSuggestionsAdapter: ArrayAdapter<String>
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,6 +44,22 @@ class DataEntryFragment : Fragment() {
         // Set today's date as default for the date EditText
         setDefaultDate() // Call the new function
 
+        // Initialize and set up the ArrayAdapter for AutoCompleteTextView
+        topicSuggestionsAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line, // Standard layout for dropdown items
+            mutableListOf() // Initialize with an empty list, will be populated by LiveData
+        )
+        binding.autoCompleteTextViewTopic.setAdapter(topicSuggestionsAdapter)
+
+        // Observe distinct topics from ViewModel
+        dataEntryViewModel.distinctTopics.observe(viewLifecycleOwner) { topics ->
+            topics?.let {
+                topicSuggestionsAdapter.clear()
+                topicSuggestionsAdapter.addAll(it)
+            }
+        }
+
         // Observe the text LiveData from the ViewModel (for the status TextView)
         dataEntryViewModel.text.observe(viewLifecycleOwner) {
             binding.textHome.text = it // text_home is your status TextView
@@ -59,7 +76,7 @@ class DataEntryFragment : Fragment() {
         dataEntryViewModel.clearFieldsEvent.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let {
                 // binding.editTextDate.text.clear() // No need to clear, just reset to today
-                binding.editTextTopic.text.clear()
+                binding.autoCompleteTextViewTopic.text.clear()
                 binding.editTextDuration.text.clear()
                 setDefaultDate() // Reset to today's date after clearing other fields
             }
@@ -68,7 +85,7 @@ class DataEntryFragment : Fragment() {
         // Set OnClickListener for the save button
         binding.buttonSave.setOnClickListener {
             val date = binding.editTextDate.text.toString().trim()
-            val topic = binding.editTextTopic.text.toString().trim()
+            val topic = binding.autoCompleteTextViewTopic.text.toString().trim()
             val duration = binding.editTextDuration.text.toString().trim()
             dataEntryViewModel.saveStudySession(date, topic, duration)
         }

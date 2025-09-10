@@ -15,6 +15,7 @@ import java.util.regex.Pattern
 class DataEntryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: TimelineRepository
+    val distinctTopics: LiveData<List<String>>
 
     private val _text = MutableLiveData<String>().apply {
         value = "Enter your study session details below."
@@ -38,6 +39,8 @@ class DataEntryViewModel(application: Application) : AndroidViewModel(applicatio
         // Initialize the repository
         val timelineEntryDao = AppDatabase.getDatabase(application).timelineEntryDao()
         repository = TimelineRepository(timelineEntryDao)
+
+        distinctTopics = repository.distinctTopics
     }
 
     fun saveStudySession(dateStr: String, topicStr: String, durationStr: String) {

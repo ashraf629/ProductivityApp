@@ -1,6 +1,6 @@
 package com.example.productivityapp.data
 
-// No need to import LiveData here if Flow is the primary type exposed
+import androidx.lifecycle.LiveData
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -64,6 +64,8 @@ class TimelineRepository(private val timelineEntryDao: TimelineEntryDao) {
     suspend fun update(entry: TimelineEntry) {
         timelineEntryDao.updateEntry(entry)
     }
+
+    val distinctTopics: LiveData<List<String>> = timelineEntryDao.getAllDistinctTopics()
 }
 
 

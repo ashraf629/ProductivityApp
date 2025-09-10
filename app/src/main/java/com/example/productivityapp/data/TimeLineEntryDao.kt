@@ -63,5 +63,8 @@ interface TimelineEntryDao {
     @Query("DELETE FROM study_sessions")
     suspend fun deleteAllEntries()
 
+    @Query("SELECT DISTINCT topic FROM study_sessions ORDER BY topic ASC")
+    fun getAllDistinctTopics(): LiveData<List<String>>
+
 }
 
